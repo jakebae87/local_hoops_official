@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./data/certs:/etc/nginx/certs:ro
+      - ./data/vhost.d:/etc/nginx/vhost.d
+      - ./data/html:/usr/share/nginx/html
+    labels:
+      - com.github.nginx-proxy.nginx
+    networks:
+      - proxy
+
+  acme-companion:
+    image: nginxproxy/acme-companion
+    container_name: acme-companion
+    restart: always
+    environment:
+      - DEFAULT_EMAIL=jeonghyun.bae@kakao.com
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/certs:/etc/nginx/certs
+      - ./data/vhost.d:/etc/nginx/vhost.d
+      - ./data/html:/usr/share/nginx/html
+    depends_on:
+      - nginx-proxy
+    networks:
+      - proxy
+
+  frontend:
+    build: ./frontend
+    container_name: localbasket-frontend
+    expose:
+      - "80"  # 내부 포트만 공개 (nginx-proxy가 접근)
+    environment:
+      - VIRTUAL_HOST=localbasket.p-e.kr
+      - LETSENCRYPT_HOST=localbasket.p-e.kr
+      - LETSENCRYPT_EMAIL=jeonghyun.bae@kakao.com
+    depends_on:
+      - backend
+    networks:
+      - proxy
+
+  backend:
+    build: ./backend
+    container_name: localbasket-backend
+    expose:
+      - "9000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    driver: bridge
