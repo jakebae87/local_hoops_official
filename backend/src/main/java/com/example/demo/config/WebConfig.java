@@ -15,14 +15,18 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
 
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
+
     // ✅ CORS 설정
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         String[] origins = Arrays.stream(allowedOrigins.split(","))
-                                 .map(String::trim)
-                                 .toArray(String[]::new);
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
 
-        registry.addMapping("/api/**")
+        registry.addMapping("/**")
                 .allowedOrigins(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
@@ -32,8 +36,8 @@ public class WebConfig implements WebMvcConfigurer {
     // ✅ 정적 리소스 핸들링
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String uploadDir = Paths.get("uploads").toAbsolutePath().toUri().toString();
+        String abs = Paths.get(uploadDir).toAbsolutePath().toString();
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(uploadDir);
+                .addResourceLocations("file:" + abs + "/");
     }
 }
