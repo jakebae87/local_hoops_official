@@ -106,7 +106,7 @@ export default {
       if (!img) return "/default-image.png";
       return typeof img === "string"
         ? img.startsWith("/uploads/")
-          ? `https://localbasket.p-e.kr${img}`
+          ? `https://localbasket.o-r.kr${img}`
           : img
         : img instanceof File
         ? URL.createObjectURL(img)

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: "https://localbasket.p-e.kr/api",
+  baseURL: "https://localbasket.o-r.kr/api",
   withCredentials: true,
 });
 

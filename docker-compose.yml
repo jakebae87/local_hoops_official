@@ -40,8 +40,8 @@ services:
     expose:
       - "80"  # 내부 포트만 공개 (nginx-proxy가 접근)
     environment:
-      - VIRTUAL_HOST=localbasket.p-e.kr
-      - LETSENCRYPT_HOST=localbasket.p-e.kr
+      - VIRTUAL_HOST=localbasket.o-r.kr
+      - LETSENCRYPT_HOST=localbasket.o-r.kr
       - LETSENCRYPT_EMAIL=jeonghyun.bae@kakao.com
     depends_on:
       - backend
