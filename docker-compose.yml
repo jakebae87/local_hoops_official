@@ -1,37 +1,78 @@
-version: "3.8"
-
 services:
-  backend:
-    build: ./backend
-    container_name: localbasket-backend
-    environment:
-      - SERVER_PORT=${SERVER_PORT:-9000}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://localbasket.o-r.kr,http://localhost:8080}
-      - UPLOAD_DIR=/app/uploads
-      # (선택) 필요시 DB 환경변수도 추가
-      # - DB_URL=jdbc:postgresql://192.168.35.89:5432/place_marker
-      # - DB_USERNAME=marker
-      # - DB_PASSWORD=실제비번
-    ports:
-      - "${SERVER_PORT:-9000}:9000"
-    volumes:
-      - ./backend/uploads:/app/uploads
-
-  frontend:
-    build: ./frontend
-    container_name: localbasket-frontend
-    ports:
-      - "8080:80"
-
   nginx-proxy:
     image: jwilder/nginx-proxy
     container_name: nginx-proxy
+    restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ./data/certs:/etc/nginx/certs:ro
+      - ./data/vhost.d:/etc/nginx/vhost.d
+      - ./data/html:/usr/share/nginx/html
+    labels:
+      - com.github.nginx-proxy.nginx
+    networks:
+      - proxy
+
+  acme-companion:
+    image: nginxproxy/acme-companion
+    container_name: acme-companion
+    restart: always
+    environment:
+      - DEFAULT_EMAIL=jeonghyun.bae@kakao.com
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/certs:/etc/nginx/certs
+      - ./data/vhost.d:/etc/nginx/vhost.d
+      - ./data/html:/usr/share/nginx/html
+    depends_on:
+      - nginx-proxy
+    networks:
+      - proxy
+
+  frontend:
+    build: ./frontend
+    container_name: localbasket-frontend
+    expose:
+      - "80"  # 내부 포트만 공개 (nginx-proxy가 접근)
     environment:
       - VIRTUAL_HOST=localbasket.o-r.kr
       - LETSENCRYPT_HOST=localbasket.o-r.kr
+      - LETSENCRYPT_EMAIL=jeonghyun.bae@kakao.com
+      # 프런트는 루트(/)와 정적 경로를 담당
+      - VIRTUAL_PORT=80
+    depends_on:
+      - backend
+    networks:
+      - proxy
+
+  backend:
+    build: ./backend
+    container_name: localbasket-backend
+    expose:
+      - "9000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    networks:
+      - proxy
+    environment:
+      # nginx-proxy 라우팅 지정 (같은 도메인에서 특정 경로만 백엔드로)
+      - VIRTUAL_HOST=localbasket.o-r.kr
+      - VIRTUAL_PORT=9000
+      - VIRTUAL_PATH=/api/,/uploads/
+      # 애플리케이션 환경변수
+      - SERVER_PORT=${SERVER_PORT:-9000}
+      - DB_URL=${DB_URL}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://localbasket.o-r.kr,http://localhost:8080}
+      - CSP=${CSP}
+    # 프록시만 통해 외부 노출할 거면 host 바인딩은 제거 (원래 있던 포트 매핑 주석 처리)
+    # ports:
+    #   - "${SERVER_PORT:-9000}:9000"
+
+networks:
+  proxy:
+    driver: bridge
