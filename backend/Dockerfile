@@ -1,5 +1,4 @@
-# ✅ Java 8, Spring Boot 용 백엔드 Dockerfile
-FROM openjdk:8-jdk
+FROM eclipse-temurin:8-jdk
 
 # 작업 디렉토리 설정
 WORKDIR /app
