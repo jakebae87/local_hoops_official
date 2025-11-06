@@ -106,7 +106,7 @@ export default {
       if (!img) return "/default-image.png";
       return typeof img === "string"
         ? img.startsWith("/uploads/")
-          ? `https://localbasket.o-r.kr${img}`
+          ? `${process.env.VUE_APP_ASSET_BASE_URL}${img}`
           : img
         : img instanceof File
         ? URL.createObjectURL(img)

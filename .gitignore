@@ -1,2 +1,9 @@
+# 인증서 및 업로드 디렉터리
 data/certs/
 backend/uploads/
+
+# 환경 변수 파일 (민감 정보)
+.env
+.env.*
+backend/.env
+frontend/.env

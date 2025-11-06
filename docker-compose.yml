@@ -57,6 +57,15 @@ services:
       - ./backend/uploads:/app/uploads
     networks:
       - proxy
+    environment:
+      - SERVER_PORT=${SERVER_PORT:-9000}
+      - DB_URL=${DB_URL}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://localbasket.o-r.kr,http://localhost:8080}
+      - CSP=${CSP}
+    ports:
+      - "${SERVER_PORT:-9000}:9000"
 
 networks:
   proxy:

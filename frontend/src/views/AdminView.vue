@@ -135,7 +135,7 @@ export default {
     const getImagePath = (img) => {
       console.log("img check:", img);
       if (!img) return "/default-image.png";
-      return img.startsWith("/uploads/") ? `https://localbasket.o-r.kr${img}` : img;
+      return img.startsWith("/uploads/") ? `${process.env.VUE_APP_ASSET_BASE_URL}${img}` : img;
     };
 
     // ✅ 이미지 모달 닫기
