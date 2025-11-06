@@ -1,16 +1,11 @@
-// const { defineConfig } = require('@vue/cli-service')
-// module.exports = defineConfig({
-//   transpileDependencies: true
-// })
-
 module.exports = {
   devServer: {
-    port: 8080, // Vue.js 개발 서버 포트
+    port: 8080,
     proxy: {
       "/api": {
-        target: "http://localhost:9000", // ✅ 백엔드 API 주소
-        changeOrigin: true
-      }
-    }
-  }
+        target: process.env.VUE_APP_API_BASE_URL || "http://localhost:9000",
+        changeOrigin: true,
+      },
+    },
+  },
 };
