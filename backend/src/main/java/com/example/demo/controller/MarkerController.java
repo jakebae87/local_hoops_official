@@ -1,15 +1,15 @@
 package com.example.demo.controller;
 
-import com.example.demo.service.MarkerService;
-import org.springframework.http.HttpStatus;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Arrays;
+import com.example.demo.service.MarkerService;
 
 @RestController
 @RequestMapping("/api/markers")
