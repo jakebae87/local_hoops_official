@@ -34,6 +34,7 @@ public class SecurityConfig {
         .antMatchers("/uploads/**").permitAll()
         .antMatchers("/api/admin/**").hasRole("ADMIN")
         // ⬇️ 추가: 관리자만 허용 (기존 컨트롤러 경로 유지)
+        .antMatchers(HttpMethod.GET, "/api/markers/requests").hasRole("ADMIN")
         .antMatchers(HttpMethod.POST,   "/api/markers/approve/**").hasRole("ADMIN")
         .antMatchers(HttpMethod.DELETE, "/api/markers/reject/**").hasRole("ADMIN")
         .anyRequest().authenticated()
