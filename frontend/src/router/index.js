@@ -1,33 +1,20 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "@/views/HomeView.vue";
 import AdminView from "@/views/AdminView.vue";
+import LoginView from "@/views/LoginView.vue";
 
 const routes = [
-  {
-    path: "/",
-    name: "Home",
-    component: HomeView,
-    meta: { isAdmin: false }, // 일반 사용자 모드
-  },
-  {
-    path: "/admin",
-    name: "Admin",
-    component: AdminView,
-    meta: { isAdmin: true }, // 관리자 모드
-  },
+  { path: "/", name: "Home", component: HomeView },
+  { path: "/login", name: "Login", component: LoginView },
+  { path: "/admin", name: "Admin", component: AdminView, meta: { requiresAuth: true }},
 ];
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-});
+const router = createRouter({ history: createWebHistory(), routes });
 
-// ✅ 페이지 이동할 때 관리자 여부 판단
 router.beforeEach((to, from, next) => {
-  if (to.meta.isAdmin) {
-    localStorage.setItem("isAdmin", "true"); // ✅ 관리자 모드 설정
-  } else {
-    localStorage.removeItem("isAdmin"); // ✅ 일반 사용자 모드 설정
+  const token = localStorage.getItem("token");
+  if (to.meta.requiresAuth && !token) {
+    return next({ path: "/login", query: { next: to.fullPath } });
   }
   next();
 });
