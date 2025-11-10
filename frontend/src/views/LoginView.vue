@@ -29,7 +29,7 @@ const error = ref("");
 const onSubmit = async () => {
   error.value = "";
   try {
-    const { data } = await apiClient.post("/api/auth/login", {
+    const { data } = await apiClient.post("/auth/login", {
       username: username.value,
       password: password.value,
     });
