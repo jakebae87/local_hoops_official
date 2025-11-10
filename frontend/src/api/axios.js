@@ -1,16 +1,19 @@
 import axios from "axios";
 
-// 기본 axios 인스턴스 생성
+// API 전용 axios 인스턴스
 const apiClient = axios.create({
-  baseURL: process.env.VUE_APP_API_BASE_URL || "/", // 기본 경로 보완
-  withCredentials: true, // 필요시 쿠키도 포함 가능
+  // 배포에서 /api 프록시 사용 (Nginx 등). 별도 .env 없어도 고정해도 됨.
+  baseURL: process.env.VUE_APP_API_BASE_URL,
+  withCredentials: false,
+  timeout: 15000,
 });
 
-// ✅ 요청 인터셉터: JWT 토큰 자동 첨부
+// ✅ 요청 인터셉터: 토큰이 있으면 항상 Authorization 부착
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
-    if (token && config.url?.startsWith("/api")) {
+    if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -18,13 +21,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ 응답 인터셉터 (선택): 401 발생 시 로그인 페이지로 이동
+// ✅ 응답 인터셉터: 401이면 로그인 페이지로
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const status = error?.response?.status;
+    if (status === 401) {
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      // 로그인으로 이동 (필요 시 next 파라미터 유지)
+      const here = window.location.pathname + window.location.search;
+      window.location.href = `/login?next=${encodeURIComponent(here)}`;
     }
     return Promise.reject(error);
   }

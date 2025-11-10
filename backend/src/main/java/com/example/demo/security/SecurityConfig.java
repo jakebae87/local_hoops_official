@@ -6,8 +6,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -22,23 +20,26 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    // Boot 2.7.x: 람다 DSL(requestMatchers) 대신 antMatchers 사용이 더 호환성 높음
     http
       .csrf().disable()
       .cors().and()
-      .headers().frameOptions().sameOrigin().and()
       .authorizeRequests()
-        .antMatchers("/", "/index.html", "/static/**", "/favicon.ico").permitAll()
-        .antMatchers("/api/public/**").permitAll()
+        // 로그인은 공개
         .antMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-        .antMatchers("/uploads/**").permitAll()
-        .antMatchers("/api/admin/**").hasRole("ADMIN")
-        // ⬇️ 추가: 관리자만 허용 (기존 컨트롤러 경로 유지)
-        .antMatchers(HttpMethod.GET, "/api/markers/requests").hasRole("ADMIN")
+
+        // ✅ 지도 기본 페이지(승인된 마커 목록/상세)는 공개
+        .antMatchers(HttpMethod.GET, "/api/markers/approve").permitAll()
+        .antMatchers(HttpMethod.GET, "/api/markers/**").permitAll()
+
+        // ✅ 관리자 전용: AdminView에서만 사용되는 API
+        .antMatchers(HttpMethod.GET,    "/api/markers/requests").hasRole("ADMIN")
         .antMatchers(HttpMethod.POST,   "/api/markers/approve/**").hasRole("ADMIN")
         .antMatchers(HttpMethod.DELETE, "/api/markers/reject/**").hasRole("ADMIN")
+
+        // 그 외는 인증 필요
         .anyRequest().authenticated()
       .and()
+      // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 배치
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();

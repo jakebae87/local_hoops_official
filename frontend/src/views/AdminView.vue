@@ -1,7 +1,10 @@
 <template>
   <div class="admin-container">
     <h1 class="admin-title">📌 관리자 페이지</h1>
-    <button class="refresh-btn" @click="fetchMarkerRequests">🔄 등록 요청 목록 불러오기</button>
+
+    <button class="refresh-btn" @click="fetchMarkerRequests" :disabled="loading">
+      🔄 등록 요청 목록 불러오기
+    </button>
 
     <div class="grid-wrapper">
       <!-- ✅ 테이블 헤더 -->
@@ -24,8 +27,20 @@
         <div>{{ request.latitude }}</div>
         <div>{{ request.longitude }}</div>
         <div>{{ new Date(request.created_at).toLocaleDateString() }}</div>
-        <div><button class="approve-btn" @click="approveMarker(request.id)">✅ 승인</button></div>
-        <div><button class="reject-btn" @click="rejectMarker(request.id)">❌ 거부</button></div>
+        <div>
+          <button class="approve-btn" @click="approveMarker(request.id)" :disabled="actionBusy">
+            ✅ 승인
+          </button>
+        </div>
+        <div>
+          <button class="reject-btn" @click="rejectMarker(request.id)" :disabled="actionBusy">
+            ❌ 거부
+          </button>
+        </div>
+      </div>
+
+      <div v-if="!loading && paginatedData.length === 0" class="empty">
+        대기 중인 요청이 없습니다.
       </div>
     </div>
 
@@ -33,126 +48,151 @@
     <div class="pagination">
       <button @click="prevPage" :disabled="currentPage === 1">◀ 이전</button>
       <span>페이지 {{ currentPage }} / {{ totalPages }}</span>
-      <button @click="nextPage" :disabled="currentPage === totalPages">다음 ▶</button>
+      <button @click="nextPage" :disabled="currentPage === totalPages || totalPages === 0">다음 ▶</button>
     </div>
 
     <!-- ✅ 이미지 확대 모달 -->
-    <div v-if="imageModalImages.length" class="image-modal">
+    <div v-if="imageModalImages.length" class="image-modal" @click.self="closeImageModal">
       <button class="close-button" @click="closeImageModal">✖</button>
       <button v-if="imageModalImages.length > 1" class="nav-button left" @click="prevImage">◀</button>
       <img :src="getImagePath(imageModalImages[modalImageIndex])" class="modal-content" />
       <button v-if="imageModalImages.length > 1" class="nav-button right" @click="nextImage">▶</button>
     </div>
+
+    <div v-if="error" class="error">⚠️ {{ error }}</div>
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted } from "vue";
-import apiClient from "@/api/axios";
+import adminApi from "@/api/adminApi"; // ✅ 관리자 전용 인스턴스 (항상 토큰 부착)
 
 export default {
+  name: "AdminView",
   setup() {
     const markerRequests = ref([]);
     const imageModalImages = ref([]);
     const modalImageIndex = ref(0);
 
-    // ✅ 페이지네이션 관련 변수
+    const loading = ref(false);
+    const actionBusy = ref(false);
+    const error = ref(null);
+
+    // ✅ 페이지네이션
     const currentPage = ref(1);
     const itemsPerPage = 10;
 
-    // ✅ 현재 페이지 데이터 계산
+    const totalPages = computed(() =>
+      Math.ceil(markerRequests.value.length / itemsPerPage)
+    );
+
     const paginatedData = computed(() => {
       const start = (currentPage.value - 1) * itemsPerPage;
       const end = start + itemsPerPage;
       return markerRequests.value.slice(start, end);
     });
 
-    // ✅ 총 페이지 수 계산
-    const totalPages = computed(() => Math.ceil(markerRequests.value.length / itemsPerPage));
-
-    // ✅ 페이지 이동 함수
     const nextPage = () => {
-      if (currentPage.value < totalPages.value) {
-        currentPage.value++;
-      }
+      if (currentPage.value < totalPages.value) currentPage.value++;
     };
-
     const prevPage = () => {
-      if (currentPage.value > 1) {
-        currentPage.value--;
-      }
+      if (currentPage.value > 1) currentPage.value--;
     };
 
-    // ✅ 등록 요청 목록 불러오기
+    // ✅ 등록 요청 목록 불러오기 (ADMIN 전용)
     const fetchMarkerRequests = async () => {
+      loading.value = true;
+      error.value = null;
       try {
-        const response = await apiClient.get("/markers/requests");
-        markerRequests.value = response.data;
-        currentPage.value = 1; // 새로 로드할 때 첫 페이지로 초기화
-      } catch (error) {
-        console.error("🚨 등록 요청 목록 불러오기 실패:", error);
+        const { data } = await adminApi.get("/markers/requests");
+        markerRequests.value = Array.isArray(data) ? data : [];
+        currentPage.value = 1;
+      } catch (e) {
+        console.error("🚨 등록 요청 목록 불러오기 실패:", e);
+        error.value =
+          e?.response?.data?.message ||
+          e?.message ||
+          "요청 목록을 불러오지 못했습니다.";
+      } finally {
+        loading.value = false;
       }
     };
 
-    // ✅ 제목 클릭 시 해당 마커의 이미지 모달 열기
+    // ✅ 제목 클릭 → 이미지 모달
     const openImageModal = (marker) => {
-      console.log("marker check: ", marker);
-      if (marker.image) {
-        const imageArray = typeof marker.image === "string" ? marker.image.split(",") : [];
+      if (!marker) return;
+      // 백엔드에서 image(단일) 또는 images(콤마 문자열) 둘 중 하나가 올 수 있으니 대응
+      const raw =
+        marker.images ??
+        marker.image ??
+        "";
+      const list =
+        typeof raw === "string" && raw.trim().length > 0
+          ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+          : Array.isArray(raw)
+          ? raw
+          : [];
 
-        if (imageArray.length > 0) {
-          imageModalImages.value = imageArray;
-          modalImageIndex.value = 0;
-        } else {
-          alert("이미지가 없습니다.");
-        }
+      if (list.length > 0) {
+        imageModalImages.value = list;
+        modalImageIndex.value = 0;
+      } else {
+        alert("이미지가 없습니다.");
       }
     };
 
-    // ✅ 마커 승인
+    // ✅ 승인
     const approveMarker = async (id) => {
+      if (!id) return;
+      actionBusy.value = true;
       try {
-        await apiClient.post(`/markers/approve/${id}`);
+        await adminApi.post(`/markers/approve/${id}`);
         alert("마커가 승인되었습니다.");
-        fetchMarkerRequests();
-      } catch (error) {
-        console.error("🚨 마커 승인 실패:", error);
+        await fetchMarkerRequests();
+      } catch (e) {
+        console.error("🚨 마커 승인 실패:", e);
+        alert(e?.response?.data?.message || "승인에 실패했습니다.");
+      } finally {
+        actionBusy.value = false;
       }
     };
 
-    // ✅ 마커 거부
+    // ✅ 거부
     const rejectMarker = async (id) => {
+      if (!id) return;
+      actionBusy.value = true;
       try {
-        await apiClient.delete(`/markers/reject/${id}`);
+        await adminApi.delete(`/markers/reject/${id}`);
         alert("마커가 거부되었습니다.");
-        fetchMarkerRequests();
-      } catch (error) {
-        console.error("🚨 마커 거부 실패:", error);
+        await fetchMarkerRequests();
+      } catch (e) {
+        console.error("🚨 마커 거부 실패:", e);
+        alert(e?.response?.data?.message || "거부에 실패했습니다.");
+      } finally {
+        actionBusy.value = false;
       }
     };
 
     // ✅ 이미지 경로 변환
     const getImagePath = (img) => {
-      console.log("img check:", img);
       if (!img) return "/default-image.png";
-      return img.startsWith("/uploads/") ? `${process.env.VUE_APP_ASSET_BASE_URL}${img}` : img;
+      // 업로드 경로라면 정적 자산 베이스 붙이기 (예: https://localbasket.o-r.kr)
+      const base = import.meta.env.VITE_ASSET_BASE_URL || process.env.VUE_APP_ASSET_BASE_URL || "";
+      if (img.startsWith("/uploads/")) return `${base}${img}`;
+      return img;
     };
 
-    // ✅ 이미지 모달 닫기
+    // ✅ 모달 제어
     const closeImageModal = () => {
       imageModalImages.value = [];
     };
-
-    // ✅ 이전 이미지 보기
     const prevImage = () => {
-      modalImageIndex.value =
-        modalImageIndex.value === 0 ? imageModalImages.value.length - 1 : modalImageIndex.value - 1;
+      const n = imageModalImages.value.length;
+      modalImageIndex.value = (modalImageIndex.value - 1 + n) % n;
     };
-
-    // ✅ 다음 이미지 보기
     const nextImage = () => {
-      modalImageIndex.value =
-        modalImageIndex.value === imageModalImages.value.length - 1 ? 0 : modalImageIndex.value + 1;
+      const n = imageModalImages.value.length;
+      modalImageIndex.value = (modalImageIndex.value + 1) % n;
     };
 
     onMounted(() => {
@@ -160,10 +200,29 @@ export default {
     });
 
     return {
-      markerRequests, paginatedData, totalPages, currentPage,
-      fetchMarkerRequests, approveMarker, rejectMarker, openImageModal,
-      imageModalImages, modalImageIndex, closeImageModal, prevImage, nextImage,
-      getImagePath, nextPage, prevPage
+      // data
+      markerRequests,
+      imageModalImages,
+      modalImageIndex,
+      loading,
+      actionBusy,
+      error,
+      // pagination
+      paginatedData,
+      totalPages,
+      currentPage,
+      nextPage,
+      prevPage,
+      // actions
+      fetchMarkerRequests,
+      approveMarker,
+      rejectMarker,
+      openImageModal,
+      // modal utils
+      getImagePath,
+      closeImageModal,
+      prevImage,
+      nextImage,
     };
   },
 };
@@ -194,8 +253,11 @@ export default {
   font-size: 16px;
   margin-bottom: 15px;
 }
-
-.refresh-btn:hover {
+.refresh-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.refresh-btn:hover:not([disabled]) {
   background: #0056b3;
 }
 
@@ -218,14 +280,22 @@ export default {
   align-items: center;
 }
 
+.grid-row { background: #fff; }
+.grid-row:nth-child(even) { background: #fafafa; }
+
 .clickable-title {
   cursor: pointer;
   color: #007bff;
   text-decoration: underline;
 }
-
 .clickable-title:hover {
   color: #0056b3;
+}
+
+/* ✅ 빈 상태 */
+.empty {
+  padding: 16px;
+  color: #666;
 }
 
 /* ✅ 페이지네이션 */
@@ -235,7 +305,6 @@ export default {
   justify-content: center;
   gap: 10px;
 }
-
 .pagination button {
   padding: 8px 12px;
   border: none;
@@ -244,11 +313,11 @@ export default {
   color: white;
   border-radius: 5px;
 }
-
 .pagination button:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
+
 /* ✅ 이미지 확대 모달 (항상 브라우저 정중앙) */
 .image-modal {
   position: fixed;
@@ -260,11 +329,11 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 500px; /* 고정된 크기 */
+  width: 500px;
   height: 500px;
   border-radius: 10px;
   z-index: 10001;
-  overflow: hidden; /* 이미지가 넘치지 않도록 제한 */
+  overflow: hidden;
 }
 
 /* ✅ 이미지 크기에 맞게 정렬 */
@@ -303,21 +372,11 @@ export default {
 }
 
 /* ✅ 좌우 버튼이 이미지 크기에 따라 조정되도록 */
-.image-modal:hover .nav-button {
-  display: block;
-}
+.image-modal:hover .nav-button { display: block; }
 
-.nav-button:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
+.nav-button:hover { background: rgba(0, 0, 0, 0.8); }
 
 /* ✅ 좌우 위치 고정 */
-.left {
-  left: 20px;
-}
-
-.right {
-  right: 20px;
-}
-
+.left { left: 20px; }
+.right { right: 20px; }
 </style>
