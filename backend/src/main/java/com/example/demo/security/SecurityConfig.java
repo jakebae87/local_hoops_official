@@ -29,15 +29,13 @@ public class SecurityConfig {
       .headers().frameOptions().sameOrigin().and()
       .authorizeRequests()
         .antMatchers("/", "/index.html", "/static/**", "/favicon.ico").permitAll()
-        .antMatchers("/api/public/**").permitAll()
-        .antMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
         .antMatchers("/uploads/**").permitAll()
-        .antMatchers("/api/admin/**").hasRole("ADMIN")
+	.antMatchers("/api/**").permitAll()
         // ⬇️ 추가: 관리자만 허용 (기존 컨트롤러 경로 유지)
         .antMatchers(HttpMethod.GET, "/api/markers/requests").hasRole("ADMIN")
         .antMatchers(HttpMethod.POST,   "/api/markers/approve/**").hasRole("ADMIN")
         .antMatchers(HttpMethod.DELETE, "/api/markers/reject/**").hasRole("ADMIN")
-        .anyRequest().authenticated()
+        .anyRequest().permitAll()
       .and()
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -48,4 +46,5 @@ public class SecurityConfig {
   public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
     return cfg.getAuthenticationManager();
   }
+
 }

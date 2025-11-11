@@ -1,0 +1,10 @@
+data/acme/
+data/certs/
+data/vhost.d/
+data/html/
+backend/uploads/
+*.key
+*.pem
+*.crt
+*.chain.pem
+*.fullchain.pem

@@ -86,7 +86,7 @@ export default {
     // ✅ 등록 요청 목록 불러오기
     const fetchMarkerRequests = async () => {
       try {
-        const response = await apiClient.get("/api/markers/requests");
+        const response = await apiClient.get("/markers/requests");
         markerRequests.value = response.data;
         currentPage.value = 1; // 새로 로드할 때 첫 페이지로 초기화
       } catch (error) {
@@ -112,7 +112,7 @@ export default {
     // ✅ 마커 승인
     const approveMarker = async (id) => {
       try {
-        await apiClient.post(`/api/markers/approve/${id}`);
+        await apiClient.post(`/markers/approve/${id}`);
         alert("마커가 승인되었습니다.");
         fetchMarkerRequests();
       } catch (error) {
@@ -123,7 +123,7 @@ export default {
     // ✅ 마커 거부
     const rejectMarker = async (id) => {
       try {
-        await apiClient.delete(`/api/markers/reject/${id}`);
+        await apiClient.delete(`/markers/reject/${id}`);
         alert("마커가 거부되었습니다.");
         fetchMarkerRequests();
       } catch (error) {
