@@ -7,3 +7,18 @@ backend/uploads/
 .env.*
 backend/.env
 frontend/.env
+# nginx-proxy / acme-companion 런타임/비밀
+data/acme/
+data/certs/
+data/vhost.d/
+data/html/
+
+# 백엔드 업로드 실제 파일
+backend/uploads/
+
+# 일반 키/인증서 확장자(혹시 몰라 추가)
+*.key
+*.pem
+*.crt
+*.chain.pem
+*.fullchain.pem

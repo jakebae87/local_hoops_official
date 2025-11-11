@@ -13,6 +13,7 @@ services:
       - ./data/html:/usr/share/nginx/html
     labels:
       - com.github.nginx-proxy.nginx_proxy
+      - com.github.nginx-proxy.nginx
     networks:
       - proxy
 
@@ -22,7 +23,7 @@ services:
     restart: always
     environment:
       - DEFAULT_EMAIL=jeonghyun.bae@kakao.com
-      - ACME_CA_URI=https://acme-staging-v02.api.letsencrypt.org/directory
+      - NGINX_PROXY_CONTAINER=nginx-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/certs:/etc/nginx/certs
