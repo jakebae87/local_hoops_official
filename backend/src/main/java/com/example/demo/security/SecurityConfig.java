@@ -24,22 +24,21 @@ public class SecurityConfig {
       .csrf().disable()
       .cors().and()
       .authorizeRequests()
-        // 로그인은 공개
+        // 로그인 공개
         .antMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
 
-        // ✅ 지도 기본 페이지(승인된 마커 목록/상세)는 공개
+        // ✅ 지도 기본 페이지: 승인된 마커 목록/상세는 공개
         .antMatchers(HttpMethod.GET, "/api/markers/approve").permitAll()
         .antMatchers(HttpMethod.GET, "/api/markers/**").permitAll()
 
-        // ✅ 관리자 전용: AdminView에서만 사용되는 API
+        // ✅ 관리자 전용: AdminView에서 사용하는 3개 API
         .antMatchers(HttpMethod.GET,    "/api/markers/requests").hasRole("ADMIN")
         .antMatchers(HttpMethod.POST,   "/api/markers/approve/**").hasRole("ADMIN")
         .antMatchers(HttpMethod.DELETE, "/api/markers/reject/**").hasRole("ADMIN")
 
-        // 그 외는 인증 필요
+        // 나머지는 인증 필요
         .anyRequest().authenticated()
       .and()
-      // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 배치
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
