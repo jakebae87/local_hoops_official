@@ -1,24 +1,80 @@
-# 인증서 및 업로드 디렉터리
-data/certs/
-backend/uploads/
+# =========================
+# Global / OS
+# =========================
+.DS_Store
 
-# 환경 변수 파일 (민감 정보)
+# =========================
+# Secrets / Env (never commit real secrets)
+# =========================
 .env
 .env.*
 backend/.env
 frontend/.env
-# nginx-proxy / acme-companion 런타임/비밀
-data/acme/
-data/certs/
-data/vhost.d/
-data/html/
+# allow templates
+!backend/.env.example
+!frontend/.env.example
 
-# 백엔드 업로드 실제 파일
-backend/uploads/
-
-# 일반 키/인증서 확장자(혹시 몰라 추가)
+# Common key/cert files
 *.key
 *.pem
 *.crt
 *.chain.pem
 *.fullchain.pem
+
+# =========================
+# Docker / nginx-proxy runtime data
+# (generated/renewed at runtime; never version)
+# =========================
+data/certs/
+data/vhost.d/
+data/html/
+data/acme/
+
+# =========================
+# Backend (Spring Boot / Gradle, IDEs)
+# =========================
+backend/.gradle/
+backend/build/
+backend/bin/
+backend/out/
+
+# Keep Gradle wrapper JAR (required for bootstrapping)
+!backend/gradle/wrapper/gradle-wrapper.jar
+
+# STS / Eclipse / IDEA / NetBeans / VSCode
+backend/.apt_generated
+backend/.classpath
+backend/.factorypath
+backend/.project
+backend/.settings
+backend/.springBeans
+backend/.sts4-cache
+backend/.idea
+backend/*.iws
+backend/*.iml
+backend/*.ipr
+backend/.nb-gradle
+backend/.vscode
+
+# Runtime uploads (app-generated)
+backend/uploads/
+
+# =========================
+# Frontend (Node projects)
+# =========================
+frontend/node_modules/
+frontend/dist/
+
+# Local-only envs used by frameworks
+frontend/.env.local
+frontend/.env.*.local
+
+# Frontend logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Editors (repo-wide)
+frontend/.idea
+frontend/.vscode
