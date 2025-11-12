@@ -65,16 +65,9 @@ services:
       - VIRTUAL_HOST=localbasket.o-r.kr
       - VIRTUAL_PORT=9000
       - VIRTUAL_PATH=/api/,/uploads/
-      # 애플리케이션 환경변수
-      - SERVER_PORT=${SERVER_PORT:-9000}
-      - DB_URL=${DB_URL}
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://localbasket.o-r.kr,http://localhost:8080}
-      - CSP=${CSP}
-    # 프록시만 통해 외부 노출할 거면 host 바인딩은 제거 (원래 있던 포트 매핑 주석 처리)
-    # ports:
-    #   - "${SERVER_PORT:-9000}:9000"
+    env_file:
+      - ./backend/.env
+    restart: always
 
 networks:
   proxy:
