@@ -1,37 +1,38 @@
 package com.example.demo.security;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.springframework.context.annotation.Profile;
-import org.springframework.security.core.userdetails.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.example.demo.mapper.UserMapper;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
-@Profile("!prod") // 운영 제외(개발/테스트용)
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-  private final PasswordEncoder encoder;
+    private final UserMapper userMapper;
 
-  public UserDetailsServiceImpl(PasswordEncoder encoder) {
-    this.encoder = encoder;
-  }
-
-  @Override
-  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    // Java 8: Map.of(...) 미지원 → HashMap 사용
-    Map<String, String> users = new HashMap<String, String>();
-    users.put("user", encoder.encode("user1234"));
-    users.put("admin", encoder.encode("admin1234"));
-
-    if (!users.containsKey(username)) {
-      throw new UsernameNotFoundException("User not found: " + username);
+    public UserDetailsServiceImpl(UserMapper userMapper) {
+        this.userMapper = userMapper;
     }
 
-    if ("admin".equals(username)) {
-      return User.withUsername("admin").password(users.get("admin")).roles("ADMIN").build();
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // username = email
+        Map<String, Object> user = userMapper.findByEmail(username);
+
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found: " + username);
+        }
+
+        String password = (String) user.get("password");
+        String role = (String) user.get("role"); // 'USER' or 'ADMIN'
+
+        return User.withUsername(username)
+                   .password(password)
+                   .roles(role)  // ROLE_USER, ROLE_ADMIN 으로 매핑됨
+                   .build();
     }
-    return User.withUsername("user").password(users.get("user")).roles("USER").build();
-  }
 }

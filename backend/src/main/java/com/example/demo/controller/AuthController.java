@@ -1,14 +1,14 @@
-package com.example.demo.web;
+package com.example.demo.controller;
 
 import com.example.demo.mapper.UserMapper;
-import com.example.demo.security.JwtTokenProvider;
+import com.example.demo.security.jwt.JwtTokenProvider;
 import lombok.Data;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@Validated
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -43,16 +42,20 @@ public class AuthController {
 
     @Data
     public static class LoginRequest {
-        private String username; // email
+        // 프론트에서 email을 username으로 보냄
+        private String username;
         private String password;
     }
 
     @Data
     public static class TokenResponse {
         private String token;
-        public TokenResponse(String token) { this.token = token; }
+        public TokenResponse(String token) {
+            this.token = token;
+        }
     }
 
+    // 회원가입
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
 
@@ -70,28 +73,29 @@ public class AuthController {
 
         Map<String, Object> data = new HashMap<>();
         data.put("email", req.getEmail());
-        data.put("password", passwordEncoder.encode(req.getPassword()));
+        data.put("password", passwordEncoder.encode(req.getPassword())); // 🔒 반드시 해시
         data.put("nickname", req.getNickname());
         data.put("provider", "LOCAL");
         data.put("providerId", null);
-        data.put("role", "USER"); // 기본 USER
+        data.put("role", "USER"); // 기본 USER, 관리자는 DB에서 role='ADMIN'으로 수동 수정
 
         userMapper.insertUser(data);
 
         return ResponseEntity.ok(Map.of("message", "회원가입이 완료되었습니다."));
     }
 
+    // 로그인
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         try {
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            req.getUsername(),
+                            req.getUsername(),  // email
                             req.getPassword()
                     )
             );
 
-            String token = tokenProvider.generateToken(auth);
+            String token = tokenProvider.generateToken(auth); // 기존 JwtTokenProvider 메서드명에 맞게
 
             return ResponseEntity.ok(new TokenResponse(token));
         } catch (Exception e) {

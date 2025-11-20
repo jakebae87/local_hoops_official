@@ -1,50 +1,81 @@
 package com.example.demo.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-public class SecurityConfig {
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserDetailsServiceImpl userDetailsService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final PasswordEncoder passwordEncoder;
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-  }
+    @Autowired
+    public SecurityConfig(JwtTokenProvider jwtTokenProvider,
+                          UserDetailsServiceImpl userDetailsService,
+                          JwtAuthenticationFilter jwtAuthenticationFilter,
+                          PasswordEncoder passwordEncoder) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.userDetailsService = userDetailsService;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.passwordEncoder = passwordEncoder;
+    }
 
-  @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    // Boot 2.7.x: 람다 DSL(requestMatchers) 대신 antMatchers 사용이 더 호환성 높음
-    http
-      .csrf().disable()
-      .cors().and()
-      .headers().frameOptions().sameOrigin().and()
-      .authorizeRequests()
-        .antMatchers("/", "/index.html", "/static/**", "/favicon.ico").permitAll()
-        .antMatchers("/uploads/**").permitAll()
-	.antMatchers("/api/**").permitAll()
-        // ⬇️ 추가: 관리자만 허용 (기존 컨트롤러 경로 유지)
-        .antMatchers(HttpMethod.GET, "/api/markers/requests").hasRole("ADMIN")
-        .antMatchers(HttpMethod.POST,   "/api/markers/approve/**").hasRole("ADMIN")
-        .antMatchers(HttpMethod.DELETE, "/api/markers/reject/**").hasRole("ADMIN")
-        .anyRequest().permitAll()
-      .and()
-      .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userDetailsService)
+            .passwordEncoder(passwordEncoder);
+    }
 
-    return http.build();
-  }
+    @Bean
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
 
-  @Bean
-  public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
-    return cfg.getAuthenticationManager();
-  }
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .csrf().disable()
+            .cors()
+            .and()
+            .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
+            .authorizeRequests()
+                // 회원가입/로그인
+                .antMatchers("/api/auth/**").permitAll()
 
+                // 프론트 정적 리소스
+                .antMatchers("/", "/index.html", "/static/**", "/js/**", "/css/**", "/img/**").permitAll()
+
+                // 마커/댓글 조회는 모두 허용
+                .antMatchers(HttpMethod.GET, "/api/markers/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
+
+                // 관리자 전용 API
+                .antMatchers("/api/markers/approve/**", "/api/markers/reject/**")
+                    .hasRole("ADMIN")
+
+                // 나머지는 일단 모두 허용
+                .anyRequest().permitAll()
+            .and()
+            .exceptionHandling()
+            .and()
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+    }
 }
